@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>ipcMain</title>
+</head>
+<body>
+
+<button id="send">send</button>
+
+
+<script>
+    function $(id) {
+        return typeof id == "string" ? document.getElementById(id) : id
+    }
+
+    var electron = require("electron")
+    var {ipcRenderer} = electron
+
+    //监听服务端消息
+    ipcRenderer.on("server_message", function (event, message){
+        console.log(message)
+    })
+
+    //向服务端发送消息
+    $("send").addEventListener("click", function() {
+        ipcRenderer.send("client_message", [1])
+    }, false)
+
+
+</script>
+
+</body>
+</html>
+
+
