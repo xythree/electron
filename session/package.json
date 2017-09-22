@@ -1,0 +1,11 @@
+{
+  "name": "session",
+  "version": "1.0.0",
+  "description": "session",
+  "main": "index.js",
+  "scripts": {
+    "start": "electron session.js"
+  },
+  "author": "",
+  "license": "ISC"
+}

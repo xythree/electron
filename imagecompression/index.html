@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">	
+    <title>图片压缩</title>
+    <style>
+    *{margin: 0;padding:0;l}
+    button {cursor: pointer;}
+    body {
+        font-size: 14px;
+    }
+    .holder {
+        margin: 30px auto;
+        width: 300px;
+        height: 300px;    
+		line-height: 300px;
+        text-align: center;
+        border: 3px dashed #ddd;
+    }
+    .wrap {
+        margin: 30px auto;
+        width: 300px;
+    }
+    .wrap p {
+        margin: 8px 0;
+    }
+	.wrap textarea {
+		width: 100%;
+	}
+    .start {        
+        margin-top: 10px;
+        padding: 5px;       
+    }
+    .open {
+        display: none;
+    }
+    .filepicker_p {
+        display: none;
+    }
+    .loading {
+        display: none;
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 100%;
+        background: rgba(0,0,0,.25);
+    }
+    .loading:after {
+        content: "";
+        position: absolute;
+        width: 40px;
+        height: 40px;
+        left: 50%;
+        top: 50%;
+        margin-left: -20px;
+        margin-top: -100px;
+        border: 3px solid #999;
+        border-top-color: #fff;
+        border-right-color: #fff;       
+        border-radius: 50%;
+        animation: ani_1 1s infinite;
+    }
+    @keyframes ani_1 {
+        0% {transform: rotate(0);}
+        100% {transform: rotate(360deg);}
+    }
+    .red {color: #f00;}
+    </style>
+</head>
+<body>
+
+<div id="holder" class="holder">拖动文件到此框中</div>
+
+<div class="wrap">  
+    <p class="red">
+        压缩后图片地址(支持png、jpg、gif)：<button id="open" class="open" >点击打开</button>
+    </p>
+    <p>
+        <textarea name="file" id="file" cols="30" disabled rows="2"></textarea>     
+    </p>
+    <p id="filepicker_p" class="filepicker_p">
+        <input type="file" id="filepicker" name="fileList" webkitdirectory />
+    </p>
+    <p><button id="start" class="start">开始压缩</button></p>
+</div>
+<div class="loading" id="loading"></div>
+
+
+
+
+<script>
+    function $(id) {
+        return typeof id == "string" ? document.getElementById(id) : id
+    }
+
+    let electron = require("electron")
+    let {ipcRenderer} = electron
+    let path = ""
+    //监听服务端消息
+    ipcRenderer.on("server_message", function (event, message){     
+        $("loading").style.display = "none"
+        if (message.length) {               
+            $("open").style.display = "inline-block"
+            alert("压缩完成")
+        } else {
+            alert("无效的图片格式")
+        }
+    })
+    
+    $("open").addEventListener("click", function () {
+        ipcRenderer.send("client_open_file", $("file").value)
+    }, false)
+
+    //向服务端发送消息
+    $("start").addEventListener("click", function() {       
+        if (path == "") {
+            alert("请拖动要压缩的文件到指定框中")
+            return
+        }       
+        $("loading").style.display = "block"
+        ipcRenderer.send("client_message", path)
+    }, false)
+    
+    let holder = $('holder')
+    holder.ondragover = function () {
+        return false
+    }
+    holder.ondragleave = holder.ondragend = function () {
+        return false
+    }
+    holder.ondrop = function (e) {
+        let file = e.dataTransfer.files[0]    
+        e.preventDefault()
+        path = file.path
+        ipcRenderer.send("client_address_translation", path)
+        $("open").style.display = "none"
+		$("holder").style.borderColor = "#080"
+        return false
+    }
+    ipcRenderer.on("server_address_translation", function (event, message) {
+        $("file").value = message
+    })
+
+</script>
+
+</body>
+</html>
+
+
+
+
