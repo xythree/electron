@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">	
-    <title>图片压缩</title>
+    <meta charset="UTF-8">  
+    <title></title>
     <style>
     *{margin: 0;padding:0;l}
     button {cursor: pointer;}
@@ -13,7 +13,7 @@
         margin: 30px auto;
         width: 300px;
         height: 300px;    
-		line-height: 300px;
+        line-height: 300px;
         text-align: center;
         border: 3px dashed #ddd;
     }
@@ -24,17 +24,26 @@
     .wrap p {
         margin: 8px 0;
     }
-	.wrap textarea {
-		width: 100%;
-	}
-    .start {        
+    .wrap textarea {
+        width: 100%;
+    }
+    .wrap .select {
+        height: 20px;
+        padding: 2px 5px;       
+        vertical-align: middle;
+        outline: none;
+        cursor: pointer;
+    }
+    .justify {
+        text-align: justify;
+        text-align-last: justify;
+    }
+    .btn button {        
+        display: inline-block;
         margin-top: 10px;
         padding: 5px;       
     }
-    .open {
-        display: none;
-    }
-    .filepicker_p {
+    .btn .open {
         display: none;
     }
     .loading {
@@ -70,19 +79,22 @@
 </head>
 <body>
 
-<div id="holder" class="holder">拖动文件到此框中</div>
+<div id="holder" class="holder red">
+    可拖动文件到此框中(支持png、jpg、gif)
+</div>
 
 <div class="wrap">  
-    <p class="red">
-        压缩后图片地址(支持png、jpg、gif)：<button id="open" class="open" >点击打开</button>
+    <p class="justify select_btn">
+        <button id="select" class="select">选择目录</button>        
+        <button id="select2" class="select">选择文件</button>
     </p>
     <p>
-        <textarea name="file" id="file" cols="30" disabled rows="2"></textarea>     
+        <textarea name="file" id="file" cols="30" disabled rows="2"></textarea>  
     </p>
-    <p id="filepicker_p" class="filepicker_p">
-        <input type="file" id="filepicker" name="fileList" webkitdirectory />
+    <p class="justify btn">
+        <button id="start" class="start">开始压缩</button>
+        <button id="open" class="open" >点击打开</button>        
     </p>
-    <p><button id="start" class="start">开始压缩</button></p>
 </div>
 <div class="loading" id="loading"></div>
 
@@ -90,6 +102,7 @@
 
 
 <script>
+    
     function $(id) {
         return typeof id == "string" ? document.getElementById(id) : id
     }
@@ -97,16 +110,40 @@
     let electron = require("electron")
     let {ipcRenderer} = electron
     let path = ""
+	
+	function _alert(txt) {
+		ipcRenderer.send("client_info_alert", txt)
+	}
+	
     //监听服务端消息
     ipcRenderer.on("server_message", function (event, message){     
         $("loading").style.display = "none"
         if (message.length) {               
-            $("open").style.display = "inline-block"
-            alert("压缩完成")
+            $("open").style.display = "inline-block"             
+            _alert("压缩完成")
         } else {
-            alert("无效的图片格式")
+            _alert("暂不支持该格式")
         }
     })
+
+    $("select").addEventListener("click", function() {
+        ipcRenderer.send("client_open_directory_dialog")        
+    })  
+    
+    ipcRenderer.on("server_selected_directory", function (event, message) {
+        $("file").value = message.pop()
+        path = message
+    })
+        
+    $("select2").addEventListener("click", function() {
+        ipcRenderer.send("client_open_file_dialog")     
+    })
+    
+    ipcRenderer.on("server_selected_file", function (event, message) {
+        $("file").value = message.pop()
+        path = message
+    })
+
     
     $("open").addEventListener("click", function () {
         ipcRenderer.send("client_open_file", $("file").value)
@@ -115,7 +152,7 @@
     //向服务端发送消息
     $("start").addEventListener("click", function() {       
         if (path == "") {
-            alert("请拖动要压缩的文件到指定框中")
+            _alert("请选择要压缩的文件")
             return
         }       
         $("loading").style.display = "block"
@@ -130,17 +167,19 @@
         return false
     }
     holder.ondrop = function (e) {
-        let file = e.dataTransfer.files[0]    
-        e.preventDefault()
-        path = file.path
+        let file = [].slice.call(e.dataTransfer.files, 0)
+        e.preventDefault()      
+        path = file.map(t => t.path)
+        
         ipcRenderer.send("client_address_translation", path)
         $("open").style.display = "none"
-		$("holder").style.borderColor = "#080"
+        $("holder").style.borderColor = "#080"
         return false
     }
     ipcRenderer.on("server_address_translation", function (event, message) {
-        $("file").value = message
+        $("file").value = message[0]
     })
+
 
 </script>
 

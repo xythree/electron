@@ -1,7 +1,7 @@
 
 const fs = require("fs")
 const path = require("path")
-const {app, BrowserWindow, ipcMain, shell} = require("electron")
+const {app, BrowserWindow, ipcMain, shell, dialog} = require("electron")
 
 const imagemin = require("imagemin")
 const imageminJpegtran = require("imagemin-jpegtran")
@@ -16,29 +16,32 @@ let extname = [".png", ".jpg", ".gif"]
 
 app.on("ready", () => {
 
-    //…Ë÷√¥∞ø⁄ Ù–‘
+    //ËÆæÁΩÆÁ™óÂè£Â±ûÊÄß
     win = new BrowserWindow({
-		title: "Õº∆¨—πÀı",
-		icon: `${__dirname}/favicon.ico`,
+        title: "ÂõæÁâáÂéãÁº©",
+        icon: `${__dirname}/favicon.ico`,
         width:  500,
-        height: 600
+        height: 600,
+		maximizable: false,
+		resizable: false,
+		show: false
     })
+	
+	win.once("ready-to-show", () => {
+		win.show()
+	})
 
-    //¥Úø™øÿ÷∆Ã®
+    //ÊâìÂºÄÊéßÂà∂Âè∞
     //win.webContents.openDevTools()
     
-    //“˛≤ÿ≤Àµ•
+    //ÈöêËóèËèúÂçï
     win.setMenu(null)
     
-    //º”‘ÿindex.html
+    //Âä†ËΩΩindex.html
     win.loadURL(`file://${__dirname}/index.html`)
     
     ipcMain.on("client_address_translation", function (event, arg) {
-        let result = path.resolve(arg + "/build")
-        
-        if (path.extname(arg)) {
-            result = path.resolve(path.dirname(arg), "build")
-        }
+        let result = arg.map(t => getbuild(t))
         
         event.sender.send("server_address_translation", result)
     })
@@ -47,10 +50,9 @@ app.on("ready", () => {
         shell.openItem(arg)
     })
     
-    //º‡Ã˝øÕªß∂Àœ˚œ¢
-    ipcMain.on("client_message", function (event, arg) {
-        let filePath = arg
-        //arg¥”øÕªß∂À ’µΩµƒ ˝æ›(type Array)
+    //ÁõëÂê¨ÂÆ¢Êà∑Á´ØÊ∂àÊÅØ
+    ipcMain.on("client_message", function (event, arg) {        
+        //arg‰ªéÂÆ¢Êà∑Á´ØÊî∂Âà∞ÁöÑÊï∞ÊçÆ(type Array)
         let list = []
         
         function getFile(dir, build) {    
@@ -62,20 +64,40 @@ app.on("ready", () => {
 
                 if (stats.isFile() && extname.indexOf(path.extname(filename)) != -1) {          
                     list.push({src, dir: build})
-                } else if (stats.isDirectory() && filename != "build") {                    
+                } else if (stats.isDirectory() && filename != "build") {
                     getFile(src, path.join(build,filename))
                 }
 
             })
         }
         
-        let _stats = fs.statSync(filePath)
-        if (_stats.isFile()) {  
-            if (extname.indexOf(path.extname(filePath)) != -1) {
-                list.push({src: filePath, dir: path.resolve(path.dirname(filePath), "build")})
+        let dirfile = arg.filter(t => path.extname(t))
+        let dirfile_flag = arg.length == dirfile.length
+        let dirfile_dirname = ""
+        let dirfile_tmp = ""
+        let len = arg.length
+
+        while(len) {
+            let filePath = arg[len - 1]
+            let _stats = fs.statSync(filePath)
+
+            if (_stats.isFile()) {  
+                if (extname.indexOf(path.extname(filePath)) != -1) {
+                    dirfile_dirname = path.dirname(filePath)
+                    dirfile_tmp = path.resolve(dirfile_dirname, "build")
+                    list.push({src: filePath, dir: dirfile_tmp})
+                }
+            } else if (_stats.isDirectory()) {              
+                getFile(filePath, path.resolve(filePath, "build"))
             }
-        } else if (_stats.isDirectory()) {
-            getFile(filePath, path.resolve(filePath, "build"))
+            --len
+        }
+        
+        if (arg.length > 1 && !dirfile_flag) {
+            list.forEach(t => {
+                let tmp = t.dir.replace(dirfile_dirname, "").replace(/build(\\)?/,"")               
+                t.dir = path.join(dirfile_tmp, tmp)
+            })
         }
         
         let i = list.length
@@ -84,13 +106,15 @@ app.on("ready", () => {
             let ext = path.extname(t.src)
             let _use = use[extname.indexOf(ext)]
 
-            imagemin([t.src], t.dir, {use: [_use()]}).then(() => {                
+            imagemin([t.src], t.dir, {use: [_use()]}).then(function(){                              
                 if (i) {
                     promise(list[--i])
                 } else {
-                    // ’µΩœ˚œ¢œÚøÕªß∂À∑¢ÀÕΩ·π˚
+                    //Êî∂Âà∞Ê∂àÊÅØÂêëÂÆ¢Êà∑Á´ØÂèëÈÄÅÁªìÊûú
                     event.sender.send("server_message", list)
                 }
+            }).catch(function() {
+                console.log("catch", arguments)
             })
         }
         
@@ -100,9 +124,56 @@ app.on("ready", () => {
             event.sender.send("server_message", list)
         }
 
-
     })
-
+    
+    ipcMain.on("client_open_file_dialog", function (event) {     
+    
+        dialog.showOpenDialog({
+            properties: ["multiSelections"]
+        }, function (files) {         
+            if (files) {
+                files.push(getbuild(files[0]))
+                event.sender.send("server_selected_file", files)
+            }
+        })
+        
+    })
+    
+    ipcMain.on("client_open_directory_dialog", function (event) {       
+    
+        dialog.showOpenDialog({
+            properties: ["openDirectory"]
+        }, function (files) {         
+            if (files) {
+                files.push(getbuild(files[0]))
+                event.sender.send("server_selected_directory", files)
+            }
+        })
+        
+    })
+    
+    function getbuild(filePath) {
+        let result = path.resolve(filePath + "/build")
+        
+        if (path.extname(filePath)) {
+            result = path.resolve(path.dirname(filePath), "build")
+        }
+        return result
+    }
+	
+	ipcMain.on("client_info_alert", function (event, text) {
+		const options = {
+			type: "info",
+			title: "‰ø°ÊÅØ",
+			message: text || "",
+			buttons: ["Á°ÆÂÆö"]
+		}
+		
+		dialog.showMessageBox(options, function (index) {
+			event.sender.send("server_info_alert", index)
+		})
+	})
+	
 })
 
 

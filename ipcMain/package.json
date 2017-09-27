@@ -6,7 +6,7 @@
   "scripts": {
     "start": "electron index.js",
     "dist": "electron-builder",
-    "packager": "electron-packager ./ haha --platform=win32 --arch=x64 --electronVersion 1.7.6"
+    "packager": "electron-packager ./ haha --platform=win32 --arch=x64 --electronVersion 1.7.6 --download.mirror=https://npm.taobao.org/mirrors/electron/"
   },
   "author": "",
   "license": "ISC"

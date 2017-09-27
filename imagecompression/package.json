@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "electron index.js",
-    "packager": "electron-packager ./ imagecompression --platform=win32 --arch=x64 --electronVersion 1.7.6"
+    "packager": "electron-packager ./ imagecompression --platform=win32 --arch=x64 --overwrite --icon=./favicon.ico --electronVersion 1.7.6 --download.mirror=https://npm.taobao.org/mirrors/electron/"
   },
   "author": "xythree",
   "license": "ISC",
